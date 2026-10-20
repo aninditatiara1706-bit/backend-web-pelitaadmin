@@ -53,12 +53,21 @@ router.patch('/:id/status', async (req, res, next) => {
           : `Status antrean tidak dapat diubah dari ${queue.status} menjadi ${status}.`;
         throw new QueueConflict(message);
       }
+      if (status === 'DIPERIKSA') {
+        const currentQueue = await tx.antrean.findFirst({
+          where: { jadwalId: queue.jadwalId, status: 'DIPERIKSA', id: { not: queue.id } },
+          select: { noAntrean: true },
+        });
+        if (currentQueue) {
+          throw new QueueConflict(`Antrean A-${currentQueue.noAntrean} sedang diperiksa. Selesaikan pemeriksaan itu sebelum memanggil antrean berikutnya.`);
+        }
+      }
       const updated = await tx.antrean.update({ where: { id }, data: { status }, include: { peserta: true, jadwal: true } });
       if (status === 'DIPERIKSA' || status === 'SELESAI') {
         await tx.pemeriksaan.upsert({ where: { pesertaId_jadwalId: { pesertaId: queue.pesertaId, jadwalId: queue.jadwalId } }, create: { pesertaId: queue.pesertaId, jadwalId: queue.jadwalId, statusPemeriksaan: status === 'SELESAI' ? 'SELESAI' : 'BELUM_DIPERIKSA' }, update: { statusPemeriksaan: status === 'SELESAI' ? 'SELESAI' : 'BELUM_DIPERIKSA' } });
       }
       return updated;
-    });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     if (!data) return failure(res, 'Queue record not found', 404);
     return success(res, data, 'Queue status updated');
   } catch (error) { return next(error); }
