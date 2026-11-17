@@ -18,13 +18,21 @@ export function paginationMeta(page: number, limit: number, total: number) {
   return { page, limit, total, totalPages: Math.ceil(total / limit) };
 }
 
+function isDatabaseConnectivityError(error: unknown) {
+  if (error instanceof Prisma.PrismaClientInitializationError) return true;
+  if (error instanceof Error) {
+    const message = error.message;
+    return /Can't reach database server|database.*(unreachable|unavailable|not connect|not available)|ECONNREFUSED|ECONNRESET|ENOTFOUND|Connection refused/i.test(message)
+      || error.name === 'PrismaClientRustPanicError'
+      || error.name === 'PrismaClientUnknownRequestError';
+  }
+  return false;
+}
+
 export const errorHandler: ErrorRequestHandler = (error: unknown, _req, res, _next) => {
   if (error instanceof ZodError) return failure(res, 'Validation failed', 400, error.issues.map((issue) => ({ path: issue.path.join('.'), message: issue.message })));
-  if (error instanceof Prisma.PrismaClientInitializationError) {
-    console.error('Database initialization failed:', {
-      name: error.name,
-      errorCode: error.errorCode,
-    });
+  if (isDatabaseConnectivityError(error)) {
+    console.error('Database connectivity failed:', error);
     if (!process.env.DATABASE_URL) {
       return failure(res, 'Database belum dikonfigurasi. Isi DATABASE_URL di backend/.env, lalu restart backend.', 503);
     }
