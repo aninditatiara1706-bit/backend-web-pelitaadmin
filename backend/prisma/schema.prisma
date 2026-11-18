@@ -29,6 +29,9 @@ model User {
 
   peserta      Peserta[]
 
+  // Relasi notifikasi
+  notifikasi   Notifikasi[]
+
   @@map("users")
 }
 
@@ -144,6 +147,30 @@ model Pemeriksaan {
   @@index([tanggalPemeriksaan, statusPemeriksaan])
   @@index([jadwalId], map: "pemeriksaan_jadwal_id_fkey")
   @@map("pemeriksaan")
+}
+
+// ==========================================
+// NOTIFIKASI
+// ==========================================
+
+model Notifikasi {
+  id          String   @id @default(cuid())
+  judul       String
+  pesan       String   @db.Text
+  tipe        String   @default("INFO")
+
+  // Status sudah dibaca atau belum
+  sudahDibaca Boolean  @default(false) @map("sudah_dibaca")
+
+  // Relasi notifikasi dengan akun pengguna
+  userId      String   @map("user_id")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([userId, sudahDibaca])
+  @@index([createdAt])
+  @@map("notifikasi")
 }
 
 // ==========================================

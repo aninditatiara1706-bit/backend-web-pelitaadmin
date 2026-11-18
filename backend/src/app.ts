@@ -8,6 +8,7 @@ import antreanRouter from './routes/antrean.routes.js';
 import examinationRouter from './routes/pemeriksaan.routes.js';
 import analyticsRouter from './routes/rekapitulasi.routes.js';
 import { errorHandler, failure, success } from './utils/response.js';
+import notificationRouter from './routes/notification.routes.js';
 
 export const app = express();
 const allowedOrigins = (process.env.FRONTEND_ORIGIN ?? 'http://localhost:3000').split(',').map((origin) => origin.trim());
@@ -84,5 +85,7 @@ app.use('/api/jadwal', authenticate, jadwalRouter);
 app.use('/api/antrean', authenticate, antreanRouter);
 app.use('/api/pemeriksaan', authenticate, examinationRouter);
 app.use('/api/rekapitulasi', authenticate, analyticsRouter);
+app.use('/api/notifikasi', authenticate, notificationRouter);
 app.use((_req, res) => failure(res, 'Route not found', 404));
 app.use(errorHandler);
+

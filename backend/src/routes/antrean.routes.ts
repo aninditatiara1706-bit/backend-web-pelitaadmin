@@ -21,6 +21,28 @@ const transitions: Record<StatusAntrean, StatusAntrean[]> = {
 };
 
 // ==========================================
+// HELPER: NOTIFIKASI
+// ==========================================
+
+async function createNotification(
+  userId: string | null | undefined,
+  judul: string,
+  pesan: string,
+  tipe: string,
+) {
+  if (!userId) return;
+
+  await prisma.notifikasi.create({
+    data: {
+      userId,
+      judul,
+      pesan,
+      tipe,
+    },
+  });
+}
+
+// ==========================================
 // HELPER: BATAS TANGGAL HARI INI (WIB)
 // ==========================================
 
@@ -92,11 +114,7 @@ router.get('/saya', authenticate, async (req, res, next) => {
       },
     });
 
-    return success(
-      res,
-      data,
-      'Personal active queues loaded',
-    );
+    return success(res, data, 'Personal active queues loaded');
   } catch (error) {
     return next(error);
   }
@@ -169,7 +187,7 @@ router.get('/:id', async (req, res, next) => {
 
 // ==========================================
 // POST /
-// Membuat antrean
+// Membuat antrean + notifikasi
 // ==========================================
 
 router.post('/', async (req, res, next) => {
@@ -209,7 +227,7 @@ router.post('/', async (req, res, next) => {
           _max: { noAntrean: true },
         });
 
-        return tx.antrean.create({
+        const queue = await tx.antrean.create({
           data: {
             ...input,
             noAntrean: (max._max.noAntrean ?? 0) + 1,
@@ -219,18 +237,26 @@ router.post('/', async (req, res, next) => {
             jadwal: true,
           },
         });
+
+        if (queue.peserta.userId) {
+          await tx.notifikasi.create({
+            data: {
+              userId: queue.peserta.userId,
+              judul: 'Antrean Berhasil Dibuat',
+              pesan: `Antrean nomor ${queue.noAntrean} untuk ${queue.peserta.nama} berhasil diterbitkan.`,
+              tipe: 'ANTREAN',
+            },
+          });
+        }
+
+        return queue;
       },
       {
         isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
       },
     );
 
-    return success(
-      res,
-      data,
-      'Queue registration created',
-      201,
-    );
+    return success(res, data, 'Queue registration created', 201);
   } catch (error) {
     return next(error);
   }
@@ -238,7 +264,7 @@ router.post('/', async (req, res, next) => {
 
 // ==========================================
 // PATCH /:id/status
-// Mengubah status antrean
+// Mengubah status + notifikasi
 // ==========================================
 
 router.patch('/:id/status', async (req, res, next) => {
@@ -249,6 +275,10 @@ router.patch('/:id/status', async (req, res, next) => {
     const data = await prisma.$transaction(async (tx) => {
       const queue = await tx.antrean.findUnique({
         where: { id },
+        include: {
+          peserta: true,
+          jadwal: true,
+        },
       });
 
       if (!queue) return null;
@@ -292,6 +322,37 @@ router.patch('/:id/status', async (req, res, next) => {
               status === 'SELESAI'
                 ? 'SELESAI'
                 : 'BELUM_DIPERIKSA',
+          },
+        });
+      }
+
+      let judul = '';
+      let pesan = '';
+
+      switch (status) {
+        case 'DIPERIKSA':
+          judul = 'Antrean Dipanggil';
+          pesan = `Nomor antrean ${queue.noAntrean} atas nama ${queue.peserta.nama} sedang dipanggil untuk pemeriksaan.`;
+          break;
+
+        case 'SELESAI':
+          judul = 'Pemeriksaan Selesai';
+          pesan = `Pemeriksaan ${queue.peserta.nama} dengan nomor antrean ${queue.noAntrean} telah selesai.`;
+          break;
+
+        case 'BATAL':
+          judul = 'Antrean Dibatalkan';
+          pesan = `Antrean nomor ${queue.noAntrean} atas nama ${queue.peserta.nama} telah dibatalkan.`;
+          break;
+      }
+
+      if (judul && queue.peserta.userId) {
+        await tx.notifikasi.create({
+          data: {
+            userId: queue.peserta.userId,
+            judul,
+            pesan,
+            tipe: 'ANTREAN',
           },
         });
       }
