@@ -1,8 +1,7 @@
-
 import { Prisma, KategoriPeserta } from '@prisma/client';
 import { Router } from 'express';
 import { prisma } from '../config/db.js';
-import { authenticate, requireAdmin } from '../middleware/auth.js';
+import { requireAdmin } from '../middleware/auth.js';
 import {
   failure,
   paginationMeta,
@@ -20,10 +19,60 @@ import {
 
 const router = Router();
 
+// ==========================================
+// GET PESERTA MILIK AKUN LOGIN
+// ==========================================
+router.get('/saya', async (req, res, next) => {
+  try {
+    const userId = req.user!.id;
+
+    const data = await prisma.peserta.findMany({
+      where: {
+        userId,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    return success(res, data, 'Peserta saya berhasil dimuat');
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// ==========================================
+// TAMBAH PESERTA MILIK AKUN LOGIN
+// ==========================================
+router.post('/saya', async (req, res, next) => {
+  try {
+    const input = parseBody(pesertaCreateSchema, req);
+
+    const peserta = await prisma.peserta.create({
+      data: {
+        ...input,
+        userId: req.user!.id,
+      },
+    });
+
+    return success(
+      res,
+      peserta,
+      'Peserta berhasil didaftarkan',
+      201,
+    );
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// ==========================================
 // GET SEMUA PESERTA
+// ==========================================
 router.get('/', async (req, res, next) => {
   try {
     const { page, limit } = paginationSchema.parse(req.query);
+
     const q = searchSchema.parse(req.query.q) ?? '';
 
     const kategori = req.query.kategori
@@ -45,7 +94,9 @@ router.get('/', async (req, res, next) => {
     const [data, total] = await prisma.$transaction([
       prisma.peserta.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        orderBy: {
+          createdAt: 'desc',
+        },
         skip: (page - 1) * limit,
         take: limit,
       }),
@@ -64,17 +115,13 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-// POST DAFTAR PESERTA
-// Peserta otomatis terhubung dengan akun yang sedang login.
-router.post('/', authenticate, async (req, res, next) => {
+// ==========================================
+// TAMBAH PESERTA (ROUTE UMUM)
+// ==========================================
+router.post('/', async (req, res, next) => {
   try {
-    const pesertaData = parseBody(pesertaCreateSchema, req);
-
     const data = await prisma.peserta.create({
-      data: {
-        ...pesertaData,
-        userId: req.user!.id,
-      },
+      data: parseBody(pesertaCreateSchema, req),
     });
 
     return success(res, data, 'Participant created', 201);
@@ -83,29 +130,9 @@ router.post('/', authenticate, async (req, res, next) => {
   }
 });
 
-// GET PESERTA MILIK USER YANG SEDANG LOGIN
-router.get('/saya', authenticate, async (req, res, next) => {
-  try {
-    const data = await prisma.peserta.findMany({
-      where: {
-        userId: req.user!.id,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
-
-    return success(
-      res,
-      data,
-      'My participants loaded',
-    );
-  } catch (error) {
-    return next(error);
-  }
-});
-
-// GET DETAIL PESERTA
+// ==========================================
+// DETAIL PESERTA
+// ==========================================
 router.get('/:id', async (req, res, next) => {
   try {
     const id = idSchema.parse(req.params.id);
@@ -114,12 +141,20 @@ router.get('/:id', async (req, res, next) => {
       where: { id },
       include: {
         pemeriksaan: {
-          orderBy: { tanggalPemeriksaan: 'desc' },
-          include: { jadwal: true },
+          orderBy: {
+            tanggalPemeriksaan: 'desc',
+          },
+          include: {
+            jadwal: true,
+          },
         },
         antrean: {
-          orderBy: { tanggal: 'desc' },
-          include: { jadwal: true },
+          orderBy: {
+            tanggal: 'desc',
+          },
+          include: {
+            jadwal: true,
+          },
         },
       },
     });
@@ -134,7 +169,9 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-// PUT UPDATE PESERTA
+// ==========================================
+// UPDATE PESERTA
+// ==========================================
 router.put('/:id', async (req, res, next) => {
   try {
     const id = idSchema.parse(req.params.id);
@@ -150,7 +187,9 @@ router.put('/:id', async (req, res, next) => {
   }
 });
 
-// DELETE PESERTA
+// ==========================================
+// DELETE PESERTA (ADMIN)
+// ==========================================
 router.delete('/:id', requireAdmin, async (req, res, next) => {
   try {
     const id = idSchema.parse(req.params.id);
