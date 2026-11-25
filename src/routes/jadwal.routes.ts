@@ -10,7 +10,24 @@ router.get('/', async (req, res, next) => {
   try {
     const query = z.object({ status: statusJadwalSchema.optional(), tanggalMulai: z.coerce.date().optional(), tanggalSelesai: z.coerce.date().optional() }).refine((v) => !v.tanggalMulai || !v.tanggalSelesai || v.tanggalMulai <= v.tanggalSelesai).parse(req.query);
     const where: Prisma.JadwalPosyanduWhereInput = { ...(query.status ? { status: query.status as StatusJadwal } : {}), ...(query.tanggalMulai || query.tanggalSelesai ? { tanggal: { ...(query.tanggalMulai ? { gte: query.tanggalMulai } : {}), ...(query.tanggalSelesai ? { lte: query.tanggalSelesai } : {}) } } : {}) };
-    const data = await prisma.jadwalPosyandu.findMany({ where, orderBy: { tanggal: 'asc' }, include: { _count: { select: { antrean: true, pemeriksaan: true } } } });
+    const data = await prisma.jadwalPosyandu.findMany({
+      where,
+      orderBy: { tanggal: 'asc' },
+      include: {
+        _count: {
+          select: {
+            antrean: {
+              where: {
+                status: {
+                  not: 'BATAL',
+                },
+              },
+            },
+            pemeriksaan: true,
+          },
+        },
+      },
+    });
     return success(res, data, 'Schedules loaded');
   } catch (error) { return next(error); }
 });

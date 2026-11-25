@@ -10,6 +10,7 @@ datasource db {
 enum Role {
   ADMIN
   KADER
+  USER
 }
 
 enum JenisKelamin {
@@ -46,9 +47,14 @@ model User {
   name         String
   email        String   @unique
   passwordHash String   @map("password_hash")
-  role         Role     @default(KADER)
+  role         Role     @default(USER)
+  telepon      String?  @map("telepon") @db.VarChar(20)
+  avatar       String?  @db.VarChar(255)
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
+
+  peserta      Peserta[]
+
   @@map("users")
 }
 
@@ -61,12 +67,20 @@ model Peserta {
   kategori     KategoriPeserta
   alamat       String           @db.Text
   noTelepon    String?          @map("no_telepon") @db.VarChar(20)
+
+  userId       String?          @map("user_id")
+  user         User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+
   createdAt    DateTime         @default(now()) @map("created_at")
   updatedAt    DateTime         @updatedAt @map("updated_at")
+
   antrean      Antrean[]
   pemeriksaan  Pemeriksaan[]
+
   @@index([nama])
   @@index([kategori])
+  @@index([userId])
+
   @@map("peserta")
 }
 

@@ -4,6 +4,40 @@ import { failure, parseBody, success } from '../utils/response.js';
 import { examinationSchema, idSchema } from '../utils/validation.js';
 
 const router = Router();
+// ==========================================
+// GET RIWAYAT PEMERIKSAAN MILIK USER LOGIN
+// ==========================================
+router.get('/saya', async (req, res, next) => {
+  try {
+    const userId = req.user!.id;
+
+    const data = await prisma.pemeriksaan.findMany({
+      where: {
+        statusPemeriksaan: 'SELESAI',
+        peserta: {
+          is: {
+            userId,
+          },
+        },
+      },
+      orderBy: {
+        tanggalPemeriksaan: 'desc',
+      },
+      include: {
+        peserta: true,
+        jadwal: true,
+      },
+    });
+
+    return success(
+      res,
+      data,
+      'Riwayat pemeriksaan saya berhasil dimuat',
+    );
+  } catch (error) {
+    return next(error);
+  }
+});
 router.get('/', async (req, res, next) => {
   try {
     const pesertaId = req.query.pesertaId ? idSchema.parse(req.query.pesertaId) : undefined;

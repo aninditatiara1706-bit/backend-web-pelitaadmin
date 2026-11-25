@@ -10,6 +10,12 @@ export const paginationSchema = z.object({ page: z.coerce.number().int().min(1).
 export const periodSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
 export const searchSchema = z.string().trim().max(100).optional();
 export const loginSchema = z.object({ email: z.string().email().max(254), password: z.string().min(1).max(128) });
+export const registerSchema = z.object({
+  name: z.string().trim().min(2).max(120),
+  telepon: z.string().trim().max(20).optional(),
+  email: z.string().email().max(254),
+  password: z.string().min(6).max(128),
+});
 export const pesertaCreateSchema = z.object({
   nik: z.string().regex(/^\d{16}$/, 'NIK wajib terdiri dari 16 digit'),
   nama: z.string().trim().min(2).max(120),

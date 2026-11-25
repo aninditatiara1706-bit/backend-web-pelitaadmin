@@ -45,6 +45,7 @@ Endpoint selain login, logout, dan health memerlukan cookie `pelita_session` ata
 - `/api/peserta` — CRUD peserta, filter kategori, pencarian, dan pagination
 - `/api/jadwal` — jadwal posyandu
 - `/api/antrean` — antrean dan perubahan status
+- `GET /api/antrean/saya/aktif` — antrean aktif peserta yang terhubung ke akun pengguna
 - `/api/pemeriksaan` — pencatatan dan riwayat pemeriksaan
 - `/api/rekapitulasi/stats`, `/summary`, `/trends`, `/riwayat`
 

@@ -23,7 +23,16 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
   if (!token) return failure(res, 'Authentication required', 401);
   try {
     const { payload } = await jwtVerify(token, secretKey());
-    if (!payload.sub || typeof payload.email !== 'string' || typeof payload.name !== 'string' || (payload.role !== 'ADMIN' && payload.role !== 'KADER')) return failure(res, 'Invalid session', 401);
+    if (
+  !payload.sub ||
+  typeof payload.email !== 'string' ||
+  typeof payload.name !== 'string' ||
+  (payload.role !== 'ADMIN' &&
+    payload.role !== 'KADER' &&
+    payload.role !== 'USER')
+) {
+  return failure(res, 'Invalid session', 401);
+}
     req.user = { id: payload.sub, email: payload.email, name: payload.name, role: payload.role as Role };
     return next();
   } catch (error) {

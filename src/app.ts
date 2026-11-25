@@ -86,3 +86,4 @@ app.use('/api/pemeriksaan', authenticate, examinationRouter);
 app.use('/api/rekapitulasi', authenticate, analyticsRouter);
 app.use((_req, res) => failure(res, 'Route not found', 404));
 app.use(errorHandler);
+

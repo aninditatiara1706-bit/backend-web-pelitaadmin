@@ -3,7 +3,9 @@ import { app } from './app.js';
 import { prisma } from './config/db.js';
 
 const port = Number(process.env.PORT ?? 4000);
-const server = app.listen(port, () => console.info(`PELITA API listening on http://localhost:${port}`));
+const server = app.listen(port, '0.0.0.0', () =>
+  console.info(`PELITA API listening on port ${port}`)
+);
 
 async function shutdown(signal: string) {
   console.info(`${signal} received; shutting down API`);
